@@ -1,0 +1,21 @@
+# Ignore the node_modules directory
+node_modules/
+
+# Ignore logs
+logs
+*.log
+
+# Ignore the build directory
+dist/
+
+# The file containing environment variables
+.env
+
+# Ignore OSX .DS_Store files
+.DS_Store
+
+# JetBrains IDE settings
+.idea/
+
+# Ignore the .vscode directory
+.vscode/
