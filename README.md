@@ -4,7 +4,7 @@ AWS Lambda que extrai o **Common Name (CN)** de um certificado digital no format
 
 ## Visão Geral
 
-Esta função recebe o conteúdo de um certificado PEM via evento e retorna o Common Name presente no campo `Subject` do certificado.
+Esta função recebe o conteúdo de um certificado PEM via evento e retorna o Common Name (campo `Subject CN`) do certificado. O tratamento de erros é centralizado no handler, garantindo que respostas HTTP reflitam corretamente o estado real da operação.
 
 ## Estrutura do Projeto
 
@@ -17,12 +17,18 @@ lambda-get-common-name/
     └── getCommonName.mjs  # Lógica de leitura do certificado PEM
 ```
 
+## Pré-requisitos
+
+- Node.js >= 18
+- AWS Lambda com runtime **Node.js 18.x** ou superior (ES Modules habilitado via `"type": "module"`)
+
 ## Dependências
 
-| Pacote    | Versão    | Descrição                             |
-| --------- | --------- | ------------------------------------- |
-| `aws-sdk` | ^2.1641.0 | SDK da AWS                            |
-| `pem`     | ^1.14.8   | Leitura e parsing de certificados PEM |
+| Pacote | Versão  | Descrição                             |
+| ------ | ------- | ------------------------------------- |
+| `pem`  | ^1.14.8 | Leitura e parsing de certificados PEM |
+
+> `aws-sdk` não é necessário — não há chamadas a serviços AWS nesta função.
 
 ## Instalação
 
@@ -50,25 +56,52 @@ npm install
 
 ### Resposta de erro (`500`)
 
+Erros são propagados pelo handler e retornam:
+
 ```json
 {
   "error": "Mensagem de erro"
 }
 ```
 
+**Erros possíveis:**
+
+| Cenário                          | Mensagem                       |
+| -------------------------------- | ------------------------------ |
+| Campo `contentPem` ausente       | `PEM content is missing`       |
+| Conteúdo PEM inválido/corrompido | `Error reading PEM: <detalhe>` |
+
 ## Deploy
 
-Faça o upload do código como arquivo `.zip` para a AWS Lambda, garantindo que o campo **Handler** esteja configurado como `index.handler` e o runtime como **Node.js (ES Modules)**.
+Configure o **Handler** como `index.handler` e o runtime como **Node.js 18.x** (ou superior).
 
 ```bash
+# Instalar dependências de produção
+npm install --omit=dev
+
+# Gerar pacote de deploy
 zip -r function.zip index.mjs package.json functions/ node_modules/
+```
+
+Em seguida, faça o upload do `function.zip` via Console AWS ou AWS CLI:
+
+```bash
+aws lambda update-function-code \
+  --function-name lambda-get-common-name \
+  --zip-file fileb://function.zip
 ```
 
 ## Variáveis de Ambiente
 
-Nenhuma variável de ambiente é necessária para o funcionamento básico da função.
+Nenhuma variável de ambiente é necessária para o funcionamento desta função.
 
-## Notas
+## Fluxo de Execução
 
-- O campo `contentPem` deve conter o certificado em formato PEM válido.
-- Caso o conteúdo PEM esteja ausente, a função lança o erro `PEM content is missing`.
+```
+Evento Lambda
+    └── handler (index.mjs)
+            └── getCommonName(contentPem)
+                    ├── Valida presença do PEM
+                    ├── Lê o certificado via pem.readCertificateInfo()
+                    └── Retorna certInfo.commonName
+```
